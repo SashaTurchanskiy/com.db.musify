@@ -72,7 +72,7 @@ public class EmailServiceImpl implements EmailService {
                             + "Best regards,\n"
                             + "Musify Team";
 
-            message.setText(fromEmail);
+            message.setText(emailBody);
             mailSender.send(message);
 
             logger.info("Welcome email sent to {}", toEmail);

@@ -55,7 +55,7 @@ public class FileHandlerUtil {
         return loadFile(filename, songStoragePath);
     }
 
-    private Resource loadImageFile(String filename, String imageStoragePath) {
+    public Resource loadImageFile(String filename) {
         return loadFile(filename, imageStoragePath);
     }
 

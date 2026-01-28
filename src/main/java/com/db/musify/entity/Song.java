@@ -9,7 +9,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "playlist")
+@Table(name = "song")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

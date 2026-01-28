@@ -35,9 +35,9 @@ public class FIleController {
         }
     }
     @GetMapping("/image/{filename}")
-    public ResponseEntity<?> getImage(@PathVariable String fileName){
+    public ResponseEntity<?> getImage(@PathVariable String filename){
         try {
-            Resource resource = fileHandlerUtil.loadSongFile(fileName);
+            Resource resource = fileHandlerUtil.loadImageFile(filename);
             return ResponseEntity.ok()
                     .contentType(MediaType.IMAGE_JPEG)
                     .body(resource);

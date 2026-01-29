@@ -1,6 +1,7 @@
 package com.db.musify.controller;
 
 import com.db.musify.dto.request.SongRequest;
+import com.db.musify.dto.response.MessageResponse;
 import com.db.musify.dto.response.SongResponse;
 import com.db.musify.service.SongService;
 import jakarta.validation.Valid;
@@ -11,10 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -43,5 +41,47 @@ public class AdminController {
         SongResponse response = songService.addSong(request, songFile, imageFile, email);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
+    @GetMapping("/getAllSongs")
+    public ResponseEntity<?> getAllSongs(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false)String search){
+        return ResponseEntity.ok(songService.getAllSongs(userId, page, size, search));
+    }
+    @GetMapping("/getSongById/{id}")
+    public ResponseEntity<SongResponse> getSongById(@PathVariable Long id){
+        SongResponse response = songService.getSongById(id);
+        return ResponseEntity.ok(response);
+    }
+    @PutMapping("/updateSong/{id}")
+    public ResponseEntity<SongResponse> updateSong(
+            @PathVariable Long id,
+            @RequestParam("title")
+            @NotBlank(message = "Title is required")
+            @Size(max = 100, message = "Title must not exceed 100 characters")
+            String title,
+            @RequestParam("artist") @NotBlank(message = "Artist is required") @Size(max = 100, message = "Artist must not exceed 100 characters")
+            String artist,
+            @RequestParam("songFile")MultipartFile songFile,
+            @RequestParam(value = "imageFile", required = true) MultipartFile imageFile,
+            Authentication authentication){
 
+        String email = authentication.getName();
+
+        SongRequest songRequest = new SongRequest(title, artist);
+
+        SongResponse response = songService.updateSong(id, songRequest, songFile, imageFile, email);
+        return ResponseEntity.ok(response);
+    }
+    @DeleteMapping("/deleteSong/{id}")
+    public ResponseEntity<MessageResponse> deleteSong(
+            @PathVariable Long id,
+            Authentication authentication){
+
+        String email = authentication.getName();
+
+        MessageResponse response = songService.deleteSong(id, email);
+        return ResponseEntity.ok(response);
+    }
 }

@@ -47,6 +47,9 @@ public class GenericGeminiServiceImpl implements GenericGeminiService {
                 if (response == null || response.isEmpty()){
                     throw new RuntimeException("Empty response from Gemini API");
                 }
+                
+                return parseResponse(response, responseType);
+                
             }catch (ClientException ex){
                 if (ex.getMessage() != null && ex.getMessage().contains("429")){
                     logger.warn("Rate limit exceeded for {}. Trying next model...", models[i].trim());
@@ -57,6 +60,23 @@ public class GenericGeminiServiceImpl implements GenericGeminiService {
                 }
             }
         }
-        return null;
+        throw new RuntimeException("All models exhausted due to rate limits", lastException);
+    }
+
+    private <T> T parseResponse(String response, Class<T> responseType) {
+        if (responseType == String.class){
+            return responseType.cast(response);
+        }
+
+        try {
+            String json = response.trim();
+            if (json.startsWith("```json")) json = json.substring(7);
+            else if (json.startsWith("````")) json = json.substring(3);
+            if (json.endsWith("```")) json = json.substring(0, json.length()-3);
+
+            return objectMapper.readValue(json.trim(), responseType);
+        }catch (Exception ex){
+            throw new RuntimeException("Failed to parse response: " + ex.getMessage(), ex);
+        }
     }
 }

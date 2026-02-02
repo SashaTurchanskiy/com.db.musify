@@ -3,12 +3,14 @@ package com.db.musify.service.impl;
 import com.db.musify.dto.request.SongRequest;
 import com.db.musify.dto.response.MessageResponse;
 import com.db.musify.dto.response.PaginatedResponse;
+import com.db.musify.dto.response.SongAiInsightsResponse;
 import com.db.musify.dto.response.SongResponse;
 import com.db.musify.entity.AppUser;
 import com.db.musify.entity.Song;
 import com.db.musify.repository.AppUserRepository;
 import com.db.musify.repository.PlaylistSongRepository;
 import com.db.musify.repository.SongRepository;
+import com.db.musify.service.GenericGeminiService;
 import com.db.musify.service.SongService;
 import com.db.musify.util.FileHandlerUtil;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +32,7 @@ public class SongServiceImpl implements SongService {
     private final AppUserRepository appUserRepository;
     private final PlaylistSongRepository playlistSongRepository;
     private final FileHandlerUtil fileHandlerUtil;
-    // GenericGeminiService
+    private final GenericGeminiService geminiService;
 
     @Value("${app.base.url}")
     private String basedUrl;
@@ -126,6 +128,42 @@ public class SongServiceImpl implements SongService {
         songRepository.delete(song);
         return new MessageResponse("Song deleted successfully");
     }
+
+    @Override
+    public SongAiInsightsResponse getSongAiInsights(Long songId) {
+        Song song = songRepository.findById(songId)
+                .orElseThrow(()-> new RuntimeException("Song not found"));
+
+        String prompt = buildSongAnalysisPrompt(song);
+        return geminiService.generateContent(prompt, SongAiInsightsResponse.class);
+    }
+    private String buildSongAnalysisPrompt(Song song) {
+        return String.format("""
+            Analyze the song '%s' by '%s' and provide detailed insights in JSON format.
+
+            Return a JSON object with the following structure:
+        {
+            "analysis": "A detailed 2-3 sentence analysis of the track's musical characteristics, production quality, and emotional impact",
+            "moods": ["List", "of", "4-6", "mood", "keywords"],
+            "genre": "Primary genre classification",
+            "tempo": 120,
+            "key": "Musical key (e.g., C Major, D Minor)",
+            "energy": 7,
+            "similarArtists": ["List", "of", "4-6", "similar", "artists"],
+            "recommendedFor": "A 1-2 sentence recommendation about when and where to listen to this song"
+        }
+
+            Important:
+            - The 'tempo' should be an estimated BPM (beats per minute) between 60-200
+            - The 'energy' should be a rating from 1-10
+            - Base your analysis on the artist's typical style and the song title
+            - Be creative but realistic
+            - Return ONLY the JSON object, no additional text
+        """,
+                song.getTitle(),
+                song.getArtist());
+    }
+
 
     private String processImageFile(MultipartFile imageFile, String uniqueId) {
         if (imageFile == null || imageFile.isEmpty()){

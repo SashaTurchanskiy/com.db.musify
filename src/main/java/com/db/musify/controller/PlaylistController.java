@@ -1,6 +1,7 @@
 package com.db.musify.controller;
 
 import com.db.musify.dto.request.PlaylistRequest;
+import com.db.musify.dto.response.MessageResponse;
 import com.db.musify.dto.response.PlaylistResponse;
 import com.db.musify.service.PlaylistService;
 import jakarta.validation.constraints.NotBlank;
@@ -10,10 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -38,6 +36,35 @@ public class PlaylistController {
         PlaylistRequest request = new PlaylistRequest(name, description, isPublic);
         PlaylistResponse response = playlistService.createPlaylist(request, imageFile, email);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @PatchMapping("/updatePlaylistPrivacy/{id}")
+    public ResponseEntity<PlaylistResponse> updatePlaylistPrivacy(@PathVariable Long id,
+                                                                  @RequestParam("isPublic") Boolean isPublic,
+                                                                  Authentication authentication){
+
+        String email = authentication.getName();
+
+        PlaylistResponse response = playlistService.updatePlaylistPrivacy(id, isPublic, email);
+        return ResponseEntity.ok(response);
+    }
+    @PostMapping("/addSongToPlaylist/{playlistId}")
+    public ResponseEntity<MessageResponse> addSongToPlaylist(@PathVariable Long playlistId,
+                                                             @RequestParam("songId") Long songId,
+                                                             Authentication authentication){
+
+        String email = authentication.getName();
+        MessageResponse response = playlistService.addSongToPlaylist(playlistId, songId, email);
+        return ResponseEntity.ok(response);
+    }
+    @DeleteMapping("/removeSongFromPlaylist/{playlistId}")
+    public ResponseEntity<MessageResponse> removeSongFromPlaylist(@PathVariable Long playlistId,
+                                                                  @RequestParam("songId") Long songId,
+                                                                  Authentication authentication){
+
+        String email = authentication.getName();
+        MessageResponse response = playlistService.removeSongFromPlaylist(playlistId, songId, email);
+        return ResponseEntity.ok(response);
     }
 
 }

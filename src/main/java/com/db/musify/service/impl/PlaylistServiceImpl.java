@@ -2,6 +2,7 @@ package com.db.musify.service.impl;
 
 import com.db.musify.dto.request.PlaylistRequest;
 import com.db.musify.dto.response.MessageResponse;
+import com.db.musify.dto.response.PaginatedResponse;
 import com.db.musify.dto.response.PlaylistResponse;
 import com.db.musify.entity.AppUser;
 import com.db.musify.entity.Playlist;
@@ -15,6 +16,9 @@ import com.db.musify.service.PlaylistService;
 import com.db.musify.util.FileHandlerUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -113,6 +117,82 @@ public class PlaylistServiceImpl implements PlaylistService {
             }
         }
         return new MessageResponse("Song removed from playlist successfully");
+    }
+
+    @Override
+    public MessageResponse reorderSongInPlaylist(Long playlistId, Long songId, Integer newPosition, String email) {
+        validatePlaylistAccess(playlistId, email);
+
+        PlaylistSong playlistSong = playlistSongRepository.findByPlaylistIdAndSongId(playlistId, songId)
+                .orElseThrow(()-> new RuntimeException("Song not found in playlist"));
+
+        List<PlaylistSong> allSongs = playlistSongRepository.findByPlaylistIdOrderByPositionAsc(playlistId);
+
+        if (newPosition < 1 || newPosition > allSongs.size()){
+            throw new RuntimeException("Invalid position. Must be between 1 and " + allSongs.size());
+        }
+
+        int currentPosition = playlistSong.getPosition();
+
+        if (currentPosition == newPosition){
+            return new MessageResponse("Song is already at position " + newPosition);
+        }
+
+        if (newPosition > currentPosition){
+            for (PlaylistSong song : allSongs){
+                if (song.getPosition() > currentPosition && song.getPosition() <= newPosition){
+                    song.setPosition(song.getPosition() -1);
+                    playlistSongRepository.save(song);
+                }
+            }
+        }else {
+            for (PlaylistSong song : allSongs){
+                if (song.getPosition() >= newPosition && song.getPosition() < currentPosition){
+                    song.setPosition(song.getPosition() + 1);
+                    playlistSongRepository.save(song);
+                }
+            }
+        }
+
+        playlistSong.setPosition(newPosition);
+        playlistSongRepository.save(playlistSong);
+
+        List<PlaylistSong> finalSongs = playlistSongRepository.findByPlaylistIdOrderByPositionAsc(playlistId);
+        int normalizedPosition = 1;
+        for (PlaylistSong song : finalSongs){
+            if (song.getPosition() != normalizedPosition){
+                song.setPosition(normalizedPosition);
+                playlistSongRepository.save(song);
+            }
+            normalizedPosition++;
+        }
+        return new MessageResponse("Song reorder successfully to position " + newPosition);
+    }
+
+    @Override
+    public PaginatedResponse<PlaylistResponse> getAllPublicPlaylist(int page, int size, String search) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Playlist> playlistPage;
+
+        if (search != null &&  !search.trim().isEmpty()){
+            playlistPage = playlistRepository.findPublicPlaylistWithSongsByNameOrDescription(search.trim(), pageable);
+        }else {
+            playlistPage = playlistRepository.findPublicPlaylistWithSongs(pageable);
+        }
+
+        List<PlaylistResponse> playlistResponses = playlistPage.getContent().stream()
+                .map(playlist -> PlaylistResponse.fromEntity(playlist, baseUrl))
+                .toList();
+
+        return new PaginatedResponse<>(
+                playlistResponses,
+                playlistPage.getNumber(),
+                playlistPage.getSize(),
+                playlistPage.getTotalElements(),
+                playlistPage.getTotalPages(),
+                playlistPage.isLast(),
+                playlistPage.isFirst()
+        );
     }
 
     private AppUser getUserByEmail(String email){

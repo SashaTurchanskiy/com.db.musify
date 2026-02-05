@@ -28,9 +28,9 @@ public class AdminController {
                                                     @NotBlank(message = "Title is required")
                                                     @Size(max = 100, message = "Title must not exceed 100 characters")
                                                     String title,
-                                                @RequestParam("artist") @NotBlank(message = "Artist is required") @Size(max = 100, message = "Artist must not exceed 100 characters")
+                                                @RequestPart("artist") @NotBlank(message = "Artist is required") @Size(max = 100, message = "Artist must not exceed 100 characters")
                                                     String artist,
-                                                @RequestParam("songFile")MultipartFile songFile,
+                                                @RequestPart("songFile")MultipartFile songFile,
                                                 @RequestParam(value = "imageFile", required = true) MultipartFile imageFile,
                                                 Authentication authentication){
 

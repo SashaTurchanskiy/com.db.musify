@@ -66,5 +66,24 @@ public class PlaylistController {
         MessageResponse response = playlistService.removeSongFromPlaylist(playlistId, songId, email);
         return ResponseEntity.ok(response);
     }
+    @PatchMapping("/reorderSongInPlaylist/{playlistId}")
+    public ResponseEntity<MessageResponse> reorderSongInPlaylist(
+            @PathVariable Long playlistId,
+            @RequestParam("songId") Long songId,
+            @RequestParam("newPosition") Integer newPosition,
+            Authentication authentication){
+
+        String email = authentication.getName();
+        MessageResponse response = playlistService.reorderSongInPlaylist(playlistId, songId, newPosition, email);
+        return ResponseEntity.ok(response);
+    }
+    @GetMapping("/getAllPublicPlaylist")
+    public ResponseEntity<?> getAllPublicPlaylist(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search){
+
+        return ResponseEntity.ok(playlistService.getAllPublicPlaylist(page, size, search));
+    }
 
 }

@@ -4,6 +4,7 @@ import com.db.musify.dto.request.PlaylistRequest;
 import com.db.musify.dto.response.MessageResponse;
 import com.db.musify.dto.response.PaginatedResponse;
 import com.db.musify.dto.response.PlaylistResponse;
+import com.db.musify.dto.response.PlaylistWithSongsResponse;
 import com.db.musify.entity.AppUser;
 import com.db.musify.entity.Playlist;
 import com.db.musify.entity.PlaylistSong;
@@ -19,7 +20,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -193,6 +193,70 @@ public class PlaylistServiceImpl implements PlaylistService {
                 playlistPage.isLast(),
                 playlistPage.isFirst()
         );
+    }
+
+    @Override
+    public PaginatedResponse<PlaylistResponse> getMyPlaylist(String email, int page, int size, String search) {
+
+        AppUser appUser = getUserByEmail(email);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Playlist> playlistPage;
+
+        if (search != null && !search.trim().isEmpty()) {
+            playlistPage = playlistRepository.findByAppUserIdAndNameContainingIgnoreCaseOrAppUserIdAndDescriptionContainingIgnoreCase(
+                    appUser.getId(), search.trim(), appUser.getId(), search.trim(), pageable);
+        }else {
+            playlistPage = playlistRepository.findByAppUserId(appUser.getId(), pageable);
+        }
+
+        List<PlaylistResponse> playlistResponses = playlistPage.getContent().stream()
+                .map(playlist -> PlaylistResponse.fromEntity(playlist, baseUrl))
+                .toList();
+
+        return new PaginatedResponse<>(
+                playlistResponses,
+                playlistPage.getNumber(),
+                playlistPage.getSize(),
+                playlistPage.getTotalElements(),
+                playlistPage.getTotalPages(),
+                playlistPage.isLast(),
+                playlistPage.isFirst()
+        );
+    }
+
+    @Override
+    public PlaylistWithSongsResponse getPlaylistWithSongs(Long playlistId, String email) {
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(()-> new RuntimeException("Playlist not found"));
+
+        if (!playlist.getIsPublic()){
+            if (email == null){
+                throw new RuntimeException("This playlist is private");
+            }
+
+            AppUser appUser = getUserByEmail(email);
+            boolean isOwner = playlist.getAppUser().getId().equals(appUser.getId());
+            boolean isAdmin = "ADMIN".equals(appUser.getRole());
+
+            if (!isOwner && !isAdmin){
+                throw new RuntimeException("This playlist is private");
+            }
+        }
+
+        List<PlaylistSong> playlistSongs = playlistSongRepository.findByPlaylistIdOrderByPositionAsc(playlistId);
+
+        return PlaylistWithSongsResponse.fromEntity(playlist, playlistSongs, baseUrl);
+    }
+
+    @Override
+    public MessageResponse deletePlaylist(Long playlistId, String email) {
+        Playlist playlist = validatePlaylistAccess(playlistId, email);
+
+        playlistSongRepository.deleteByPlaylistId(playlistId);
+
+        playlistRepository.delete(playlist);
+
+        return new MessageResponse("Playlist deleted successfully");
     }
 
     private AppUser getUserByEmail(String email){

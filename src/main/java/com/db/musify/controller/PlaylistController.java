@@ -2,8 +2,11 @@ package com.db.musify.controller;
 
 import com.db.musify.dto.request.PlaylistRequest;
 import com.db.musify.dto.response.MessageResponse;
+import com.db.musify.dto.response.PaginatedResponse;
 import com.db.musify.dto.response.PlaylistResponse;
+import com.db.musify.dto.response.PlaylistWithSongsResponse;
 import com.db.musify.service.PlaylistService;
+import jakarta.mail.Message;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
@@ -84,6 +87,39 @@ public class PlaylistController {
             @RequestParam(required = false) String search){
 
         return ResponseEntity.ok(playlistService.getAllPublicPlaylist(page, size, search));
+    }
+    @GetMapping("/getMyPlaylist")
+    public ResponseEntity<?> getMyPlaylist(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            Authentication authentication){
+
+        if (authentication == null){
+            return ResponseEntity.status(401).body("Authentication required");
+        }
+
+        String email = authentication.getName();
+        PaginatedResponse<PlaylistResponse> result = playlistService.getMyPlaylist(email, page, size, search);
+        return ResponseEntity.ok(result);
+    }
+    @GetMapping("/getPlaylistWithSongs/{playlistId}")
+    public ResponseEntity<PlaylistWithSongsResponse> getPlaylistSongs(
+            @PathVariable Long playlistId,
+            Authentication authentication){
+
+        String email = authentication.getName();
+        PlaylistWithSongsResponse response = playlistService.getPlaylistWithSongs(playlistId, email);
+        return ResponseEntity.ok(response);
+    }
+    @DeleteMapping("/deletePlaylist/{playlistId}")
+    public ResponseEntity<MessageResponse> deletePlaylist(
+            @PathVariable Long playlistId,
+            Authentication authentication){
+
+        String email = authentication.getName();
+        MessageResponse response = playlistService.deletePlaylist(playlistId, email);
+        return ResponseEntity.ok(response);
     }
 
 }
